@@ -1,0 +1,10 @@
+﻿add-migration mig_name
+update-database
+
+
+// varolan bir veritabanına sıfırdan migration yapmak için;
+ - Migrations klasörünü sil.
+ - Veritabanından __EFMigrationsHistory tablosunu sil.
+ - Package Manager Console'da "add-migration m1" komutunu çalıştır.
+ - Migrations klasörü içerisinde oluşan "xxxxxxxxxxxxx_m1.cs" dosyasının içerisindeki "Up" ve "Down" method içeriklerini temizle.
+ - "update-database" komutunu çalıştır.
