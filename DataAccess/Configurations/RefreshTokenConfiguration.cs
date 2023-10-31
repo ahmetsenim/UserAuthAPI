@@ -12,6 +12,7 @@ namespace UserAuthAPI.DataAccess.Configurations
             builder.Property(x => x.UserId).IsRequired().HasDefaultValueSql("0");
             builder.Property(x => x.RefToken).IsRequired(false);
             builder.Property(x => x.CreateDate).IsRequired().HasColumnType("datetime").HasDefaultValueSql("GETUTCDATE()");
+            builder.Property(x => x.ValidityDate).IsRequired().HasColumnType("datetime").HasDefaultValueSql("GETUTCDATE()");
             builder.Property(x => x.IsValid).IsRequired().HasDefaultValueSql("0");
         }
     }

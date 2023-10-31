@@ -11,6 +11,7 @@ namespace UserAuthAPI.Models.Concrete
         public bool IsLoggedIn { get; set; }
         public int NumberOfAttempts { get; set; }
         public DateTime CreateDate { get; set; }
+        public DateTime ValidityDate { get; set; }
         public DateTime? LoginDate { get; set; }
     }
 }

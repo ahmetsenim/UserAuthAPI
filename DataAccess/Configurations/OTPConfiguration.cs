@@ -16,6 +16,7 @@ namespace UserAuthAPI.DataAccess.Configurations
             builder.Property(x => x.IsLoggedIn).IsRequired().HasDefaultValueSql("0");
             builder.Property(x => x.NumberOfAttempts).IsRequired().HasDefaultValueSql("0");
             builder.Property(x => x.CreateDate).IsRequired().HasColumnType("datetime").HasDefaultValueSql("GETUTCDATE()");
+            builder.Property(x => x.ValidityDate).IsRequired().HasColumnType("datetime").HasDefaultValueSql("GETUTCDATE()");
             builder.Property(x => x.LoginDate).IsRequired(false).HasColumnType("datetime");
             builder.ToTable("OTPs");
         }

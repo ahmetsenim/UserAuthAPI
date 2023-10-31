@@ -1,27 +1,35 @@
 ﻿using Azure.Core;
+using Microsoft.Extensions.Configuration;
+using System.Diagnostics;
 using UserAuthAPI.DataAccess;
 using UserAuthAPI.DataAccess.Abstract;
 using UserAuthAPI.Helpers;
 using UserAuthAPI.Models.Concrete;
 using UserAuthAPI.Models.Dtos;
 using UserAuthAPI.Services.Abstract;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using static System.Net.WebRequestMethods;
 
 namespace UserAuthAPI.Services
 {
     public class AuthService: IAuthService
     {
-        private readonly ITokenService _tokenService;
+        private readonly IConfiguration _configuration;
+        private readonly IAccessTokenService _accessTokenService;
+        private readonly IRefreshTokenService _refreshTokenService;
         private readonly IOTPRepository _otpRepository;
         private readonly IUserRepository _userRepository;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
         public AuthService(
-            ITokenService tokenService, 
+            IConfiguration configuration,
+            IAccessTokenService accessTokenService,
+            IRefreshTokenService refreshTokenService,
             IOTPRepository otpRepository, 
             IUserRepository userRepository, 
             IRefreshTokenRepository refreshTokenRepository
         ) {
-            _tokenService = tokenService;
+            _configuration = configuration;
+            _accessTokenService = accessTokenService;
+            _refreshTokenService = refreshTokenService;
             _otpRepository = otpRepository;
             _userRepository = userRepository;
             _refreshTokenRepository = refreshTokenRepository;
@@ -53,10 +61,6 @@ namespace UserAuthAPI.Services
             int msgOtp = OtpGenerator.CreateOtp();
             string msgOtpToken = OtpGenerator.CreateOtpToken();
 
-            // Todo : Send otp sms
-            // SmsServiceManager ssm = new SmsServiceManager();
-            // ssm.Send("", "", "");
-
             _otpRepository.Add(new OTP
             {
                 OtpCode = msgOtp,
@@ -65,7 +69,8 @@ namespace UserAuthAPI.Services
                 IsLoggedIn = false,
                 NumberOfAttempts = 0,
                 CreateDate = DateTime.UtcNow,
-                 LoginDate = DateTime.UtcNow,
+                ValidityDate = DateTime.UtcNow.AddMinutes(Convert.ToInt32(_configuration["AppSettings:OTPValidityPeriodMinutes"])),
+                LoginDate = DateTime.UtcNow,
             });
             await _otpRepository.SaveChangesAsync();
             return new DataResult { Success = true, Data = new GetOTPResponse { OtpToken = msgOtpToken } };
@@ -83,7 +88,7 @@ namespace UserAuthAPI.Services
                 return new DataResult { Messages = msgList };
             }
 
-            if (otp.CreateDate <= DateTime.UtcNow.AddMinutes(-5))
+            if (otp.ValidityDate <= DateTime.UtcNow)
             {
                 msgList.Add(new MessageItem() { Message = "Tek kullanımlık şifrenizin süresi doldu! Lütfen yeniden giriş yapmayı deneyiniz. " });
                 return new DataResult { Messages = msgList };
@@ -119,70 +124,47 @@ namespace UserAuthAPI.Services
                 return new DataResult { Messages = msgList };
             }
 
-            var accessToken = await _tokenService.GenerateToken(user);
-
-            var claims = _userRepository.GetClaims(user.Id);
-            accessToken.Claims = claims.Select(x => x.Name).ToList();
-
-            //if (user.IsSeller)
-            //{
-            //    var sellerMenu = SellerMenuCreator.GetSellerMenu(claims);
-            //    _cacheManager.Add($"{CacheKeys.UserIdForSellerMenu}={user.SellerId}={user.UserId}", sellerMenu);
-            //}
-
-            string refToken = EncryptedDataGenerator.RandomGenerate(16) + "-" + EncryptedDataGenerator.RandomGenerate(16) + "-" + EncryptedDataGenerator.RandomGenerate(16);
-            RefreshToken rToken = new RefreshToken()
-            {
-                UserId = user.Id,
-                RefToken = refToken,
-                CreateDate = DateTime.UtcNow,
-                IsValid = true
-            };
-            _refreshTokenRepository.Add(rToken);
-            await _refreshTokenRepository.SaveChangesAsync();
-            accessToken.RefreshToken = refToken;
-
-            //_cacheManager.Remove($"{CacheKeys.UserIdForClaim}={user.UserId}");
-            //_cacheManager.Add($"{CacheKeys.UserIdForClaim}={user.UserId}", claims.Select(x => x.Name));
-
-            //if (user.IsSeller)
-            //{
-            //    var sellerMenu = SellerMenuGenerator.CreateSellerMenu(claims);
-            //    _cacheManager.Remove($"{CacheKeys.UserIdForSellerMenu}={user.UserId}");
-            //    _cacheManager.Add($"{CacheKeys.UserIdForSellerMenu}={user.UserId}", sellerMenu);
-            //}
-
-
-            //List<SellerMenu> sm = new List<SellerMenu>();
-            //sm
-
-            //return new SuccessDataResult<AccessToken>(accessToken, Messages.SuccessfulLogin);
-            return new DataResult { Success = true, Data = accessToken };
+            var accessToken = await _accessTokenService.GenerateToken(user);
+            var refreshToken = await _refreshTokenService.GenerateRefreshToken(user);
+            accessToken.RefreshToken = refreshToken;
+            msgList.Add(new MessageItem() { Message = "Başarıyla giriş yapıldı!" });
+            return new DataResult { Messages= msgList, Success = true, Data = accessToken };
         }
 
+        public async Task<DataResult> LoginUserWithRefreshTokenAsync(RefreshTokenRequest request)
+        {
+            List<MessageItem> msgList = new();
 
-        //{
-        //    UserLoginResponse response = new();
+            var getRef = _refreshTokenRepository.Get(u => u.UserId == request.UserId && u.RefToken == request.RefToken && request.RefToken != "");
+            if (getRef == null)
+            {
+                msgList.Add(new MessageItem() { Message = "Oturum süresi doldu! Lütfen tekrar giriş yapınız." });
+                return new DataResult { Messages = msgList };
+            }
+            if (!getRef.IsValid)
+            {
+                msgList.Add(new MessageItem() { Message = "Oturum süresi doldu! Lütfen tekrar giriş yapınız." });
+                return new DataResult { Messages = msgList };
+            }
 
-        //    if (string.IsNullOrEmpty(request.UserName) || string.IsNullOrEmpty(request.Password))
-        //    {
-        //        throw new ArgumentNullException(nameof(request));
-        //    }
+            if (getRef.ValidityDate <= DateTime.UtcNow)
+            {
+                msgList.Add(new MessageItem() { Message = "Oturum süresi doldu! Lütfen tekrar giriş yapınız." });
+                return new DataResult { Messages = msgList };
+            }
 
-        //    if (request.UserName == "onur" && request.Password == "123456")
-        //    {
-        //        var generatedTokenInformation = await _tokenService.GenerateToken(new GenerateTokenRequest { UserName = request.UserName, UserID = "111" });
+            var user = _userRepository.Get(u => u.Id == request.UserId && u.IsActive);
+            if (user == null)
+            {
+                msgList.Add(new MessageItem() { Message = "Hesap bulunamadı!" });
+                return new DataResult { Messages = msgList };
+            }
 
-        //        response.Status = true;
-        //        response.Token = generatedTokenInformation.Token;
-        //    }
-        //    else
-        //    {
-        //        response.Message = "Kullanıcı bulunamadı!";
-        //    }
-
-        //    return response;
-        //}
-
+            await _refreshTokenService.RemoveRefreshToken(getRef);
+            var accessToken = await _accessTokenService.GenerateToken(user);
+            var refreshToken = await _refreshTokenService.GenerateRefreshToken(user);
+            accessToken.RefreshToken = refreshToken;
+            return new DataResult { Success = true, Data = accessToken };
+        }
     }
 }

@@ -9,14 +9,9 @@ namespace UserAuthAPI.DataAccess
         public ProjectDbContext(DbContextOptions<ProjectDbContext> options) : base(options) { }
 
         public DbSet<Group> Groups { get; set; }
-        public DbSet<GroupClaim> GroupClaims { get; set; }
-        public DbSet<OperationClaim> OperationClaims { get; set; }
         public DbSet<OTP> OTPs { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<User> Users { get; set; }
-        public DbSet<UserClaim> UserClaims { get; set; }
-        public DbSet<UserGroup> UserGroups { get; set; }
-        public DbSet<UserOperationClaim> UserOperationClaims { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -8,6 +8,7 @@ namespace UserAuthAPI.Models.Concrete
         public int UserId { get; set; }
         public string RefToken { get; set; }
         public DateTime CreateDate { get; set; }
+        public DateTime ValidityDate { get; set; }
         public bool IsValid { get; set; }
     }
 }

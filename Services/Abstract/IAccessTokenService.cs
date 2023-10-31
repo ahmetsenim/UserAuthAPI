@@ -3,8 +3,8 @@ using UserAuthAPI.Models.Dtos;
 
 namespace UserAuthAPI.Services.Abstract
 {
-    public interface ITokenService
+    public interface IAccessTokenService
     {
-        public Task<GenerateTokenResponse> GenerateToken(User user);
+        public Task<AccessTokenResponse> GenerateToken(User user);
     }
 }
