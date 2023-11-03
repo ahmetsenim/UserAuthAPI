@@ -35,6 +35,7 @@ builder.Services.AddTransient<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddControllers().AddFluentValidation(fv => {
     fv.RegisterValidatorsFromAssemblyContaining<GetOTPRequestValidation>();
     fv.RegisterValidatorsFromAssemblyContaining<UserLoginRequestValidation>();
+    fv.RegisterValidatorsFromAssemblyContaining<RegisterUserRequestValidation>();
 });
 builder.Services.AddControllers().AddFluentValidation().ConfigureApiBehaviorOptions(options =>
 {

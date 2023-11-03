@@ -72,11 +72,12 @@ namespace UserAuthAPI.Services
                 ValidityDate = DateTime.UtcNow.AddMinutes(Convert.ToInt32(_configuration["AppSettings:OTPValidityPeriodMinutes"])),
                 LoginDate = DateTime.UtcNow,
             });
-            await _otpRepository.SaveChangesAsync();
+            _otpRepository.SaveChanges();
+
             return new DataResult { Success = true, Data = new GetOTPResponse { OtpToken = msgOtpToken } };
         }
 
-        public async Task<DataResult> LoginUserAsync(UserLoginRequest request)
+        public async Task<DataResult> LoginUserAsync(LoginUserRequest request)
         {
             List<MessageItem> msgList = new();
 
@@ -106,13 +107,13 @@ namespace UserAuthAPI.Services
                 otp.LoginDate = DateTime.UtcNow;
                 otp.IsLoggedIn = true;
                 _otpRepository.Update(otp);
-                await _otpRepository.SaveChangesAsync();
+                _otpRepository.SaveChanges();
             }
             else
             {
                 otp.NumberOfAttempts = otp.NumberOfAttempts + 1;
                 _otpRepository.Update(otp);
-                await _otpRepository.SaveChangesAsync();
+                _otpRepository.SaveChanges();
                 msgList.Add(new MessageItem() { Message = "Girdiğiniz tek kullanımlık şifre hatalı!" });
                 return new DataResult { Messages = msgList };
             }
@@ -164,7 +165,52 @@ namespace UserAuthAPI.Services
             var accessToken = await _accessTokenService.GenerateToken(user);
             var refreshToken = await _refreshTokenService.GenerateRefreshToken(user);
             accessToken.RefreshToken = refreshToken;
-            return new DataResult { Success = true, Data = accessToken };
+
+            msgList.Add(new MessageItem() { Message = "Oturum yenilendi." });
+            return new DataResult { Messages = msgList, Success = true, Data = accessToken };
         }
+
+
+        public async Task<DataResult> RegisterUserAsync(RegisterUserRequest request)
+        {
+            List<MessageItem> msgList = new();
+
+            HashingHelper.CreatePasswordHash(request.Password, out var passwordSalt, out var passwordHash);
+
+            _userRepository.Add(new User
+            {
+                FullName = request.FullName,
+                PhoneNumber = request.PhoneNumber,
+                Role = "User",
+                IsActive = true,
+                CreateDate = DateTime.UtcNow,
+                PhoneVerified = false,
+                PasswordHash = passwordHash,
+                PasswordSalt = passwordSalt
+            });
+            _userRepository.SaveChanges();
+
+            var user = _userRepository.Get(u => u.PhoneNumber == request.PhoneNumber && u.IsActive);
+
+            int msgOtp = OtpGenerator.CreateOtp();
+            string msgOtpToken = OtpGenerator.CreateOtpToken();
+
+            _otpRepository.Add(new OTP
+            {
+                OtpCode = msgOtp,
+                OtpToken = msgOtpToken,
+                UserId = user.Id,
+                IsLoggedIn = false,
+                NumberOfAttempts = 0,
+                CreateDate = DateTime.UtcNow,
+                ValidityDate = DateTime.UtcNow.AddMinutes(Convert.ToInt32(_configuration["AppSettings:OTPValidityPeriodMinutes"])),
+                LoginDate = DateTime.UtcNow,
+            });
+            _otpRepository.SaveChanges();
+
+            return new DataResult { Success = true, Data = new GetOTPResponse { OtpToken = msgOtpToken } };
+        }
+
+
     }
 }

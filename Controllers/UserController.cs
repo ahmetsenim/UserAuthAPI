@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using System.Runtime.CompilerServices;
 using UserAuthAPI.Models.Dtos;
 using UserAuthAPI.Services.Abstract;
 
@@ -37,10 +39,21 @@ namespace UserAuthAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DataResult))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(string))]
         [HttpPost("Login")]
-        public async Task<ActionResult<UserLoginResponse>> LoginUserAsync([FromBody] UserLoginRequest request)
+        public async Task<ActionResult<LoginUserResponse>> LoginUserAsync([FromBody] LoginUserRequest request)
         {
             var result = await authService.LoginUserAsync(request);
             return result.Success ? Ok(result) : Unauthorized(result.Messages);
+        }
+        [AllowAnonymous]
+        [Consumes("application/json")]
+        [Produces("application/json", "text/plain")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DataResult))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
+        [HttpPost("Register")]
+        public async Task<ActionResult<GetOTPResponse>> RegisterUserAsync([FromBody] RegisterUserRequest request)
+        {
+            var result = await authService.RegisterUserAsync(request);
+            return result.Success ? Ok(result) : BadRequest(result.Messages);
         }
 
 
@@ -50,7 +63,7 @@ namespace UserAuthAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DataResult))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(string))]
         [HttpPost("RefreshToken")]
-        public async Task<ActionResult<UserLoginResponse>> LoginUserWithRefreshTokenAsync([FromBody] RefreshTokenRequest request)
+        public async Task<ActionResult<LoginUserResponse>> LoginUserWithRefreshTokenAsync([FromBody] RefreshTokenRequest request)
         {
             var result = await authService.LoginUserWithRefreshTokenAsync(request);
             return result.Success ? Ok(result) : BadRequest(result);

@@ -61,9 +61,9 @@ namespace UserAuthAPI.DataAccess
             return _context.SaveChanges();
         }
 
-        public Task<int> SaveChangesAsync()
-        {
-            return _context.SaveChangesAsync();
-        }
+        //public Task<int> SaveChangesAsync()
+        //{
+        //    return _context.SaveChangesAsync();
+        //}
     }
 }

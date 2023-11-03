@@ -16,6 +16,6 @@ namespace UserAuthAPI.DataAccess
         void RemoveRange(IEnumerable<T> entities);
         T Get(Expression<Func<T, bool>> expression);
         int SaveChanges();
-        Task<int> SaveChangesAsync();
+        //Task<int> SaveChangesAsync();
     }
 }

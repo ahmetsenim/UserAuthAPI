@@ -3,7 +3,7 @@ using UserAuthAPI.Models.Dtos;
 
 namespace UserAuthAPI.Models.Validations
 {
-    public class UserLoginRequestValidation : AbstractValidator<UserLoginRequest>
+    public class UserLoginRequestValidation : AbstractValidator<LoginUserRequest>
     {
         public UserLoginRequestValidation()
         {

@@ -1,6 +1,6 @@
 ﻿namespace UserAuthAPI.Models.Dtos
 {
-    public class UserLoginResponse
+    public class LoginUserResponse
     {
         public bool Status { get; set; }
         public string Message { get; set; }
