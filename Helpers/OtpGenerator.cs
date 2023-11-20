@@ -10,7 +10,7 @@
 
         public static string CreateOtpToken()
         {
-            return EncryptedDataGenerator.RandomGenerate(8) + "-" + EncryptedDataGenerator.RandomGenerate(16) + "-" + EncryptedDataGenerator.RandomGenerate(8);
+            return EncryptedDataGenerator.RandomGenerate(8) + "-" + EncryptedDataGenerator.RandomGenerate(16) + "-" + EncryptedDataGenerator.RandomGenerate(32);
         }
     }
 }

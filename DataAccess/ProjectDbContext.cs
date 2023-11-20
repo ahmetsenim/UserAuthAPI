@@ -11,12 +11,14 @@ namespace UserAuthAPI.DataAccess
         public DbSet<Group> Groups { get; set; }
         public DbSet<OTP> OTPs { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<ResetPasswordOTP> ResetPasswordOTPs { get; set; }
         public DbSet<User> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.ApplyConfiguration(new OTPConfiguration());
             modelBuilder.ApplyConfiguration(new RefreshTokenConfiguration());
+            modelBuilder.ApplyConfiguration(new ResetPasswordOTPConfiguration());
             modelBuilder.ApplyConfiguration(new UserConfiguration());
         }
     }

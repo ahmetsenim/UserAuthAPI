@@ -75,7 +75,7 @@ namespace UserAuthAPI.Helpers
 
         public static string RandomGenerate(int KacKarakter)
         {
-            char[] karakter = "0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz".ToCharArray();
+            char[] karakter = "123456789AaBbCcDdEeFfGgHhiJjKkLMmNnoPpQqRrSsTtUuVvWwXxYyZz".ToCharArray();
             string result = string.Empty;
             Random r = new Random();
             for (int i = 0; i < KacKarakter; i++)

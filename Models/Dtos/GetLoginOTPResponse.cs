@@ -1,6 +1,6 @@
 ﻿namespace UserAuthAPI.Models.Dtos
 {
-    public class GetOTPResponse
+    public class GetLoginOTPResponse
     {
         public string OtpToken { get; set; }
     }

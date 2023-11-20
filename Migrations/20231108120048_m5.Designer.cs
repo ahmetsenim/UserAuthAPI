@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UserAuthAPI.DataAccess;
 
@@ -11,9 +12,11 @@ using UserAuthAPI.DataAccess;
 namespace UserAuthAPI.Migrations
 {
     [DbContext(typeof(ProjectDbContext))]
-    partial class ProjectDbContextModelSnapshot : ModelSnapshot
+    [Migration("20231108120048_m5")]
+    partial class m5
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -124,7 +127,7 @@ namespace UserAuthAPI.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("UserAuthAPI.Models.Concrete.ResetPasswordOTP", b =>
+            modelBuilder.Entity("UserAuthAPI.Models.Concrete.TempPassword", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -137,15 +140,15 @@ namespace UserAuthAPI.Migrations
                         .HasColumnType("int")
                         .HasDefaultValueSql("0");
 
-                    b.Property<string>("OTP")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
                     b.Property<bool>("PasswordReset")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValueSql("0");
+
+                    b.Property<string>("PasswordTemp")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<int>("UserId")
                         .ValueGeneratedOnAdd()
@@ -159,7 +162,7 @@ namespace UserAuthAPI.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ResetPasswordOTPs");
+                    b.ToTable("TempPasswords");
                 });
 
             modelBuilder.Entity("UserAuthAPI.Models.Concrete.User", b =>

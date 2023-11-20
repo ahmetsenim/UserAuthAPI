@@ -4,19 +4,18 @@ using System.Security.Claims;
 using System.Text;
 using UserAuthAPI.Models.Concrete;
 using UserAuthAPI.Models.Dtos;
-using UserAuthAPI.Services.Abstract;
 
-namespace UserAuthAPI.Services
+namespace UserAuthAPI.Helpers
 {
-    public class AccessTokenService:IAccessTokenService
+    public class TokenHelper : ITokenHelper
     {
         private readonly IConfiguration _configuration;
-        public AccessTokenService(IConfiguration configuration)
+        public TokenHelper(IConfiguration configuration)
         {
             _configuration = configuration;
         }
 
-        public async Task<AccessTokenResponse> GenerateToken(User user)
+        public async Task<AccessTokenResponse> GenerateAccessToken(User user)
         {
             SymmetricSecurityKey symmetricSecurityKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_configuration["AppSettings:Secret"]));
             int validityMinutes = Convert.ToInt32(_configuration["AppSettings:AccessTokenValidityPeriodMinutes"]);
@@ -40,6 +39,27 @@ namespace UserAuthAPI.Services
                 Token = new JwtSecurityTokenHandler().WriteToken(jwt),
                 Expiration = dateTimeExpires
             });
+        }
+
+        public async Task<RefreshToken> GenerateRefreshToken(User user)
+        {
+            string refToken = EncryptedDataGenerator.RandomGenerate(16) + "-" + EncryptedDataGenerator.RandomGenerate(16) + "-" + EncryptedDataGenerator.RandomGenerate(16);
+            RefreshToken rToken = new RefreshToken()
+            {
+                UserId = user.Id,
+                RefToken = refToken,
+                CreateDate = DateTime.UtcNow,
+                ValidityDate = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["AppSettings:RefreshTokenValidityPeriodDays"])),
+                IsValid = true
+            };
+            //_refreshTokenRepository.Add(rToken);
+            //_refreshTokenRepository.SaveChanges();
+            return await Task.FromResult(rToken);
+        }
+
+        public bool ValidateToken(string token)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using System.Diagnostics;
 using UserAuthAPI.DataAccess;
 using UserAuthAPI.DataAccess.Abstract;
+using UserAuthAPI.DataAccess.EntityFramework;
 using UserAuthAPI.Helpers;
 using UserAuthAPI.Models.Concrete;
 using UserAuthAPI.Models.Dtos;
@@ -14,30 +15,27 @@ namespace UserAuthAPI.Services
     public class AuthService: IAuthService
     {
         private readonly IConfiguration _configuration;
-        private readonly IAccessTokenService _accessTokenService;
-        private readonly IRefreshTokenService _refreshTokenService;
         private readonly IOTPRepository _otpRepository;
         private readonly IUserRepository _userRepository;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
+        private readonly ITokenHelper _tokenHelper;
         public AuthService(
             IConfiguration configuration,
-            IAccessTokenService accessTokenService,
-            IRefreshTokenService refreshTokenService,
             IOTPRepository otpRepository, 
-            IUserRepository userRepository, 
-            IRefreshTokenRepository refreshTokenRepository
+            IUserRepository userRepository,
+            IRefreshTokenRepository refreshTokenRepository,  
+            ITokenHelper tokenHelper
         ) {
             _configuration = configuration;
-            _accessTokenService = accessTokenService;
-            _refreshTokenService = refreshTokenService;
             _otpRepository = otpRepository;
             _userRepository = userRepository;
             _refreshTokenRepository = refreshTokenRepository;
+            _tokenHelper = tokenHelper;
         }
 
-        public async Task<DataResult> GetOTPAsync(GetOTPRequest request)
+        public async Task<DataResult> GetLoginOTP(GetLoginOTPRequest request)
         {
-            List<MessageItem> msgList = new();
+            var msgList = new List<MessageItem>();
 
             var user = _userRepository.Get(u => u.PhoneNumber == request.PhoneNumber);
             if (user == null) {
@@ -74,12 +72,12 @@ namespace UserAuthAPI.Services
             });
             _otpRepository.SaveChanges();
 
-            return new DataResult { Success = true, Data = new GetOTPResponse { OtpToken = msgOtpToken } };
+            return new DataResult { Success = true, Data = new GetLoginOTPResponse { OtpToken = msgOtpToken } };
         }
 
-        public async Task<DataResult> LoginUserAsync(LoginUserRequest request)
+        public async Task<DataResult> Login(LoginUserRequest request)
         {
-            List<MessageItem> msgList = new();
+            var msgList = new List<MessageItem>();
 
             var otp = _otpRepository.Get(u => u.OtpToken == request.OtpToken && u.IsLoggedIn == false);
 
@@ -121,20 +119,74 @@ namespace UserAuthAPI.Services
             var user = _userRepository.Get(u => u.Id == otp.UserId && u.IsActive);
             if (user == null)
             {
-                msgList.Add(new MessageItem() { Message = "Hesap bulunamadı!" });
+                msgList.Add(new MessageItem() { Message = "Hesap askıya alınmış!" });
                 return new DataResult { Messages = msgList };
             }
 
-            var accessToken = await _accessTokenService.GenerateToken(user);
-            var refreshToken = await _refreshTokenService.GenerateRefreshToken(user);
-            accessToken.RefreshToken = refreshToken;
+            var accessToken = await _tokenHelper.GenerateAccessToken(user);
+            var refreshToken = await _tokenHelper.GenerateRefreshToken(user);
+            _refreshTokenRepository.Add(refreshToken);
+            _refreshTokenRepository.SaveChanges();
+            accessToken.RefreshToken = refreshToken.RefToken;
             msgList.Add(new MessageItem() { Message = "Başarıyla giriş yapıldı!" });
             return new DataResult { Messages= msgList, Success = true, Data = accessToken };
         }
 
-        public async Task<DataResult> LoginUserWithRefreshTokenAsync(RefreshTokenRequest request)
+        public async Task<DataResult> Register(RegisterUserRequest request)
         {
-            List<MessageItem> msgList = new();
+            var msgList = new List<MessageItem>();
+
+            var user = _userRepository.Get(u => u.PhoneNumber == request.PhoneNumber);
+            if (user != null)
+            {
+                msgList.Add(new MessageItem() { Message = "Sistemde bu telefon numarası ile zaten kayıtlı kullanıcı var!" });
+                return new DataResult { Messages = msgList };
+            }
+
+            HashingHelper.CreatePasswordHash(request.Password, out var passwordSalt, out var passwordHash);
+
+            _userRepository.Add(new User
+            {
+                FullName = request.FullName,
+                PhoneNumber = request.PhoneNumber,
+                Role = "User",
+                IsActive = true,
+                CreateDate = DateTime.UtcNow,
+                PhoneVerified = false,
+                PasswordHash = passwordHash,
+                PasswordSalt = passwordSalt
+            });
+            _userRepository.SaveChanges();
+
+            user = _userRepository.Get(u => u.PhoneNumber == request.PhoneNumber && u.IsActive);
+            if (user == null)
+            {
+                msgList.Add(new MessageItem() { Message = "Yeni kullanıcı kaydı başarısız!" });
+                return new DataResult { Messages = msgList };
+            }
+
+            int msgOtp = OtpGenerator.CreateOtp();
+            string msgOtpToken = OtpGenerator.CreateOtpToken();
+
+            _otpRepository.Add(new OTP
+            {
+                OtpCode = msgOtp,
+                OtpToken = msgOtpToken,
+                UserId = user.Id,
+                IsLoggedIn = false,
+                NumberOfAttempts = 0,
+                CreateDate = DateTime.UtcNow,
+                ValidityDate = DateTime.UtcNow.AddMinutes(Convert.ToInt32(_configuration["AppSettings:OTPValidityPeriodMinutes"])),
+                LoginDate = DateTime.UtcNow,
+            });
+            _otpRepository.SaveChanges();
+
+            return new DataResult { Success = true, Data = new GetLoginOTPResponse { OtpToken = msgOtpToken } };
+        }
+
+        public async Task<DataResult> RefreshToken(RefreshTokenRequest request)
+        {
+            var msgList = new List<MessageItem>();
 
             var getRef = _refreshTokenRepository.Get(u => u.UserId == request.UserId && u.RefToken == request.RefToken && request.RefToken != "");
             if (getRef == null)
@@ -157,58 +209,24 @@ namespace UserAuthAPI.Services
             var user = _userRepository.Get(u => u.Id == request.UserId && u.IsActive);
             if (user == null)
             {
-                msgList.Add(new MessageItem() { Message = "Hesap bulunamadı!" });
+                msgList.Add(new MessageItem() { Message = "Hesap askıya alınmış!" });
                 return new DataResult { Messages = msgList };
             }
 
-            await _refreshTokenService.RemoveRefreshToken(getRef);
-            var accessToken = await _accessTokenService.GenerateToken(user);
-            var refreshToken = await _refreshTokenService.GenerateRefreshToken(user);
-            accessToken.RefreshToken = refreshToken;
+            /* # Remove Refresh Token # */
+            getRef.IsValid = false;
+            _refreshTokenRepository.Update(getRef);
+            _refreshTokenRepository.SaveChanges();
+            /* # Remove Refresh Token # */
+
+            var accessToken = await _tokenHelper.GenerateAccessToken(user);
+            var refreshToken = await _tokenHelper.GenerateRefreshToken(user);
+            _refreshTokenRepository.Add(refreshToken);
+            _refreshTokenRepository.SaveChanges();
+            accessToken.RefreshToken = refreshToken.RefToken;
 
             msgList.Add(new MessageItem() { Message = "Oturum yenilendi." });
             return new DataResult { Messages = msgList, Success = true, Data = accessToken };
-        }
-
-
-        public async Task<DataResult> RegisterUserAsync(RegisterUserRequest request)
-        {
-            List<MessageItem> msgList = new();
-
-            HashingHelper.CreatePasswordHash(request.Password, out var passwordSalt, out var passwordHash);
-
-            _userRepository.Add(new User
-            {
-                FullName = request.FullName,
-                PhoneNumber = request.PhoneNumber,
-                Role = "User",
-                IsActive = true,
-                CreateDate = DateTime.UtcNow,
-                PhoneVerified = false,
-                PasswordHash = passwordHash,
-                PasswordSalt = passwordSalt
-            });
-            _userRepository.SaveChanges();
-
-            var user = _userRepository.Get(u => u.PhoneNumber == request.PhoneNumber && u.IsActive);
-
-            int msgOtp = OtpGenerator.CreateOtp();
-            string msgOtpToken = OtpGenerator.CreateOtpToken();
-
-            _otpRepository.Add(new OTP
-            {
-                OtpCode = msgOtp,
-                OtpToken = msgOtpToken,
-                UserId = user.Id,
-                IsLoggedIn = false,
-                NumberOfAttempts = 0,
-                CreateDate = DateTime.UtcNow,
-                ValidityDate = DateTime.UtcNow.AddMinutes(Convert.ToInt32(_configuration["AppSettings:OTPValidityPeriodMinutes"])),
-                LoginDate = DateTime.UtcNow,
-            });
-            _otpRepository.SaveChanges();
-
-            return new DataResult { Success = true, Data = new GetOTPResponse { OtpToken = msgOtpToken } };
         }
 
 

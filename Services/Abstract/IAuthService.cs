@@ -4,10 +4,12 @@ namespace UserAuthAPI.Services.Abstract
 {
     public interface IAuthService
     {
-        public Task<DataResult> GetOTPAsync(GetOTPRequest request);
-        public Task<DataResult> LoginUserAsync(LoginUserRequest request);
-        public Task<DataResult> LoginUserWithRefreshTokenAsync(RefreshTokenRequest request);
-        public Task<DataResult> RegisterUserAsync(RegisterUserRequest request);
+        public Task<DataResult> GetLoginOTP(GetLoginOTPRequest request);
+        public Task<DataResult> Login(LoginUserRequest request);
+        public Task<DataResult> Register(RegisterUserRequest request);
+        public Task<DataResult> RefreshToken(RefreshTokenRequest request);
 
+
+        // public Task<DataResult> RefreshToken(RefreshTokenRequest request);
     }
 }

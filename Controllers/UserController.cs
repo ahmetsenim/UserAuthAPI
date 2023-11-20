@@ -15,10 +15,12 @@ namespace UserAuthAPI.Controllers
     public class UserController : ControllerBase
     {
         readonly IAuthService authService;
+        readonly IResetPasswordService resetPasswordService;
 
-        public UserController(IAuthService authService)
+        public UserController(IAuthService authService, IResetPasswordService resetPasswordService)
         {
             this.authService = authService;
+            this.resetPasswordService = resetPasswordService;
         }
 
         [AllowAnonymous]
@@ -26,10 +28,10 @@ namespace UserAuthAPI.Controllers
         [Produces("application/json", "text/plain")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DataResult))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(string))]
-        [HttpPost("GetOTP")]
-        public async Task<ActionResult<GetOTPResponse>> GetOTPAsync([FromBody] GetOTPRequest request)
+        [HttpPost("GetLoginOTP")]
+        public async Task<ActionResult<GetLoginOTPResponse>> GetLoginOTP([FromBody] GetLoginOTPRequest request)
         {
-            var result = await authService.GetOTPAsync(request);
+            var result = await authService.GetLoginOTP(request);
             return result.Success ? Ok(result.Data) : Unauthorized(result.Messages);
         }
 
@@ -39,21 +41,22 @@ namespace UserAuthAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DataResult))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(string))]
         [HttpPost("Login")]
-        public async Task<ActionResult<LoginUserResponse>> LoginUserAsync([FromBody] LoginUserRequest request)
+        public async Task<ActionResult<LoginUserResponse>> Login([FromBody] LoginUserRequest request)
         {
-            var result = await authService.LoginUserAsync(request);
-            return result.Success ? Ok(result) : Unauthorized(result.Messages);
+            var result = await authService.Login(request);
+            return result.Success ? Ok(result.Data) : Unauthorized(result.Messages);
         }
+
         [AllowAnonymous]
         [Consumes("application/json")]
         [Produces("application/json", "text/plain")]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DataResult))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(string))]
         [HttpPost("Register")]
-        public async Task<ActionResult<GetOTPResponse>> RegisterUserAsync([FromBody] RegisterUserRequest request)
+        public async Task<ActionResult<GetLoginOTPResponse>> Register([FromBody] RegisterUserRequest request)
         {
-            var result = await authService.RegisterUserAsync(request);
-            return result.Success ? Ok(result) : BadRequest(result.Messages);
+            var result = await authService.Register(request);
+            return result.Success ? Ok(result.Data) : BadRequest(result.Messages);
         }
 
 
@@ -63,34 +66,46 @@ namespace UserAuthAPI.Controllers
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DataResult))]
         [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(string))]
         [HttpPost("RefreshToken")]
-        public async Task<ActionResult<LoginUserResponse>> LoginUserWithRefreshTokenAsync([FromBody] RefreshTokenRequest request)
+        public async Task<ActionResult<LoginUserResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
         {
-            var result = await authService.LoginUserWithRefreshTokenAsync(request);
-            return result.Success ? Ok(result) : BadRequest(result);
+            var result = await authService.RefreshToken(request);
+            return result.Success ? Ok(result.Data) : BadRequest(result.Messages);
         }
 
 
-
-
-        [HttpPost("Test")]
-        [Authorize(Roles = "Futbolcu")]
-        public async Task<ActionResult<string>> TestAsync([FromBody] string request)
+        [AllowAnonymous]
+        [Consumes("application/json")]
+        [Produces("application/json", "text/plain")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DataResult))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(string))]
+        [HttpPost("GetResetPasswordOTP")]
+        public async Task<ActionResult<GetResetPasswordOTPResponse>> GetResetPasswordOTP([FromBody] GetResetPasswordOTPRequest request)
         {
-            return request == "" ? Ok("Başarılı") : BadRequest("Hatalı Veri!");
+            var result = await resetPasswordService.GetResetPasswordOTP(request);
+            return result.Success ? Ok(result.Data) : BadRequest(result.Messages);
         }
 
-        [HttpPost("Test2")]
-        [Authorize(Roles = "Futbolcu, Antrenor")]
-        public async Task<ActionResult<string>> Test2Async([FromBody] string request)
+
+        [AllowAnonymous]
+        [Consumes("application/json")]
+        [Produces("application/json", "text/plain")]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(DataResult))]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(string))]
+        [HttpPost("ResetPassword")]
+        public async Task<ActionResult<LoginUserResponse>> ResetPassword([FromBody] ResetPasswordRequest request)
         {
-            return request == "" ? Ok("Başarılı") : BadRequest("Hatalı Veri!");
+            var result = await resetPasswordService.ResetPassword(request);
+            return result.Success ? Ok(result.Data) : BadRequest(result.Messages);
         }
 
-        [HttpPost("Test3")]
-        public async Task<ActionResult<string>> Test3Async([FromBody] string request)
-        {
-            return request == "" ? Ok("Başarılı") : BadRequest("Hatalı Veri!");
-        }
+
+        //[HttpPost("Test")]
+        //[Authorize(Roles = "Admin")]
+        //[Authorize(Roles = "Admin, Ogrenci")]
+        //public async Task<ActionResult<string>> TestAsync([FromBody] string request)
+        //{
+        //    return request == "" ? Ok("Başarılı") : BadRequest("Hatalı Veri!");
+        //}
 
     }
 }

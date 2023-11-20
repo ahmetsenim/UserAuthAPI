@@ -16,6 +16,7 @@ using UserAuthAPI.DataAccess.Abstract;
 using UserAuthAPI.DataAccess.EntityFramework;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.OpenApi.Models;
+using UserAuthAPI.Helpers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,15 +28,17 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 #region Services
+builder.Services.AddSingleton<ITokenHelper, TokenHelper>();
 builder.Services.AddTransient<IAuthService, AuthService>();
-builder.Services.AddTransient<IAccessTokenService, AccessTokenService>();
-builder.Services.AddTransient<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddTransient<IResetPasswordService, ResetPasswordService>();
 #endregion
 
 builder.Services.AddControllers().AddFluentValidation(fv => {
-    fv.RegisterValidatorsFromAssemblyContaining<GetOTPRequestValidation>();
-    fv.RegisterValidatorsFromAssemblyContaining<UserLoginRequestValidation>();
+    fv.RegisterValidatorsFromAssemblyContaining<GetResetPasswordOTPRequestValidation>();
+    fv.RegisterValidatorsFromAssemblyContaining<GetLoginOTPRequest>();
     fv.RegisterValidatorsFromAssemblyContaining<RegisterUserRequestValidation>();
+    fv.RegisterValidatorsFromAssemblyContaining<ResetPasswordRequestValidation>();
+    fv.RegisterValidatorsFromAssemblyContaining<UserLoginRequestValidation>();
 });
 builder.Services.AddControllers().AddFluentValidation().ConfigureApiBehaviorOptions(options =>
 {
@@ -44,16 +47,13 @@ builder.Services.AddControllers().AddFluentValidation().ConfigureApiBehaviorOpti
 
 builder.Services.AddDbContext<ProjectDbContext>(x => x.UseSqlServer(builder.Configuration["ConnectionStrings:MsSqlConnection"]));
 
-
 #region Repositories
 builder.Services.AddTransient(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddTransient<IUserRepository, UserRepository>();
 builder.Services.AddTransient<IOTPRepository, OTPRepository>();
 builder.Services.AddTransient<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddTransient<IResetPasswordOTPRepository, ResetPasswordOTPRepository>();
 #endregion
-
-//builder.Services.AddScoped<IUserRepository, UserRepository>();
-//builder.Services.AddScoped<IOTPRepository, OTPRepository>();
 
 builder.Services.AddAuthentication(options =>
 {
